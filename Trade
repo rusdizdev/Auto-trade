@@ -1,0 +1,64 @@
+-- Auto Accept Grow Garden (Low Detection Risk)
+-- Script by rusdizdev (v2 - Safe Mode)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- Cek apakah game sudah siap
+if not player or not ReplicatedStorage:FindFirstChild("Remotes") then
+    warn("Game not ready! Retrying...")
+    task.wait(5)
+    if not player then return end
+end
+
+-- Cari RemoteEvent Trade dengan cara lebih aman
+local TradeRemote
+for _, remote in pairs(ReplicatedStorage.Remotes.Trade:GetChildren()) do
+    if remote.Name == "AcceptRequest" then
+        TradeRemote = remote
+        break
+    end
+end
+
+if not TradeRemote then
+    warn("[ERROR] Trade Remote not found!")
+    return
+end
+
+-- Simulasi perilaku manusia (delay acak)
+local function acceptTrade(tradePartner)
+    if not tradePartner or tradePartner == player then return end
+    
+    -- Delay acak (0.3s - 1.5s)
+    task.wait(math.random(0.3, 1.5))
+    
+    -- Kirim accept request (dengan error handling)
+    pcall(function()
+        TradeRemote:FireServer(tradePartner)
+        print("[Trade Accepted] From:", tradePartner.Name)
+    end)
+end
+
+-- Deteksi trade request tanpa hooking berlebihan
+local lastTradeCheck = 0
+local function checkNewTrades()
+    while task.wait(1) do
+        -- Cek setiap 3 detik (kurangi deteksi)
+        if os.clock() - lastTradeCheck < 3 then continue end
+        
+        -- Gunasi `getgc` dengan limit (tidak spam)
+        for _, obj in pairs(getgc(true)) do
+            if typeof(obj) == "table" and rawget(obj, "IncomingTrade") then
+                obj.IncomingTrade:Connect(acceptTrade)
+                lastTradeCheck = os.clock()
+                print("[System] Trade listener activated!")
+                break
+            end
+        end
+    end
+end
+
+-- Jalankan script dengan delay awal
+task.wait(math.random(2, 5))
+checkNewTrades()
